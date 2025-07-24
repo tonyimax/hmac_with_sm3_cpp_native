@@ -144,7 +144,9 @@ public:
         // Key processing
         uint8_t processed_key[64] = {0};
 
+        //处理密钥
         if (key_len > 64) {
+            //使用SM3哈希算法生成新密钥
             SM3 sm3;
             sm3.update(key, key_len);
             sm3.finalize(processed_key);
@@ -152,6 +154,7 @@ public:
             std::copy(key, key + key_len, processed_key);
         }
 
+        //初始化内部及外部填充键并与密钥进行位异域运算
         // Create inner and outer padding
         for (int i = 0; i < 64; ++i) {
             ipad[i] = processed_key[i] ^ 0x36;
@@ -159,15 +162,17 @@ public:
         }
     }
 
+    //计算SM3哈希
     void compute(const uint8_t* data, size_t data_len, uint8_t digest[32]) {
         SM3 sm3;
-
+        //使用内部填充键与数据生成内部哈希
         // Inner hash
         sm3.update(ipad, 64);
         sm3.update(data, data_len);
         uint8_t inner_hash[32];
         sm3.finalize(inner_hash);
 
+        //使用外部填充键与生成的内部哈希 生成最终的外部哈希也就是HAMC SM3输出值
         // Outer hash
         sm3.reset();
         sm3.update(opad, 64);
