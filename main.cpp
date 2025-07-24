@@ -5,17 +5,24 @@
 #include <sstream>
 #include <string>
 
-// SM3 constants
+// 8字节SM3常量
 constexpr uint32_t SM3_IV[] = {
-    0x7380166F, 0x4914B2B9, 0x172442D7, 0xDA8A0600,
-    0xA96F30BC, 0x163138AA, 0xE38DEE4D, 0xB0FB0E4E
+    0x7380166F,
+    0x4914B2B9,
+    0x172442D7,
+    0xDA8A0600,
+    0xA96F30BC,
+    0x163138AA,
+    0xE38DEE4D,
+    0xB0FB0E4E
 };
 
 constexpr uint32_t SM3_T[] = {
-    0x79CC4519, 0x7A879D8A
+    0x79CC4519,
+    0x7A879D8A
 };
 
-// Utility functions
+//工具函数
 #define ROTL(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
 #define P0(x) ((x) ^ ROTL((x), 9) ^ ROTL((x), 17))
 #define P1(x) ((x) ^ ROTL((x), 15) ^ ROTL((x), 23))
@@ -138,24 +145,29 @@ private:
     std::vector<uint8_t> buffer;
 };
 
+
 class HMAC_SM3 {
 public:
-    HMAC_SM3(const uint8_t* key, size_t key_len) {
-        // Key processing
+    HMAC_SM3(const uint8_t* key, //密钥
+             size_t key_len)     //密钥长度
+    {
+        //目标密钥
         uint8_t processed_key[64] = {0};
 
         //处理密钥
         if (key_len > 64) {
             //使用SM3哈希算法生成新密钥
             SM3 sm3;
-            sm3.update(key, key_len);
-            sm3.finalize(processed_key);
+            sm3.update(key, key_len);//根据密钥生成32字节SM3哈希密钥
+            sm3.finalize(processed_key);//复制生成的32字节SM3哈希密钥到目标密钥中
         } else {
-            std::copy(key, key + key_len, processed_key);
+            //复制原始密钥到目标密钥中
+            std::copy(key, //源范围的起始位置
+                      key + key_len,//源范围的结束位置
+                      processed_key);//目标
         }
 
         //初始化内部及外部填充键并与密钥进行位异域运算
-        // Create inner and outer padding
         for (int i = 0; i < 64; ++i) {
             ipad[i] = processed_key[i] ^ 0x36;
             opad[i] = processed_key[i] ^ 0x5C;
@@ -166,14 +178,12 @@ public:
     void compute(const uint8_t* data, size_t data_len, uint8_t digest[32]) {
         SM3 sm3;
         //使用内部填充键与数据生成内部哈希
-        // Inner hash
         sm3.update(ipad, 64);
         sm3.update(data, data_len);
         uint8_t inner_hash[32];
         sm3.finalize(inner_hash);
 
         //使用外部填充键与生成的内部哈希 生成最终的外部哈希也就是HAMC SM3输出值
-        // Outer hash
         sm3.reset();
         sm3.update(opad, 64);
         sm3.update(inner_hash, 32);
@@ -181,18 +191,18 @@ public:
     }
 
 private:
-    uint8_t ipad[64];
-    uint8_t opad[64];
+    uint8_t ipad[64]; //内填充键
+    uint8_t opad[64]; //外填充键
 };
 
-// Helper function to convert string to hex
+//转换字符串为十六进制并返回标准字符串
 std::string bytes_to_hex(const uint8_t* data, size_t len) {
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
+    std::ostringstream oss;//字符串输出对象
+    oss << std::hex << std::setfill('0');//设置填充字符0
     for (size_t i = 0; i < len; ++i) {
-        oss << std::setw(2) << static_cast<unsigned>(data[i]);
+        oss << std::setw(2) << static_cast<unsigned>(data[i]);//设置填充宽度为2，并将字符写入字符串中
     }
-    return oss.str();
+    return oss.str();//返回所有写入的字符
 }
 
 int main() {
