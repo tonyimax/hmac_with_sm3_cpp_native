@@ -193,7 +193,12 @@ std::string bytes_to_hex(const uint8_t* data, size_t len) {
 int main() {
     // Example usage
     std::string key = "secretKey";
+    std::string key_long = "secretKey_secretKey_secretKey_secretKey_secretKey_secretKey_secretKey";
     std::string message = "Hello, HMAC-SM3!";
+    //sm3 whith key "secretKey_secretKey_secretKey_secretKey_secretKey_secretKey_secretKey"
+    //--> da6bb08ddfb04dce6ecd2f36290d6c5c7b0346ae32191327cc24300c39e90ffc
+    //sm3 whith key "secretKey"
+    //--> 2c2d7be4307a1a030c018f9ff34be0180369d209ca2965293150588c9669b7df
 
     // Compute HMAC-SM3
     HMAC_SM3 hmac(reinterpret_cast<const uint8_t*>(key.data()), key.size());
@@ -201,9 +206,18 @@ int main() {
     hmac.compute(reinterpret_cast<const uint8_t*>(message.data()), message.size(), digest);
 
     // Print result
-    std::cout << "HMAC-SM3: " << bytes_to_hex(digest, 32) << std::endl;
+    std::cout << "HMAC-SM3 Short Key : " << bytes_to_hex(digest, 32) << std::endl;
     //2c2d7be4307a1a030c018f9ff34be0180369d209ca2965293150588c9669b7df     --online
     //2c2d7be4307a1a030c018f9ff34be0180369d209ca2965293150588c9669b7df     --cpp
+
+    //Long Key Test
+    // Compute HMAC-SM3
+    HMAC_SM3 hmac1(reinterpret_cast<const uint8_t*>(key_long.data()), key_long.size());
+    uint8_t digest1[32];
+    hmac1.compute(reinterpret_cast<const uint8_t*>(message.data()), message.size(), digest1);
+    std::cout << "HMAC-SM3 Long  Key : " << bytes_to_hex(digest1, 32) << std::endl;
+    //da6bb08ddfb04dce6ecd2f36290d6c5c7b0346ae32191327cc24300c39e90ffc     --online
+    //da6bb08ddfb04dce6ecd2f36290d6c5c7b0346ae32191327cc24300c39e90ffc     --cpp
 
     return 0;
 }
