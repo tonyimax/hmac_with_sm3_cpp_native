@@ -36,45 +36,59 @@ public:
     SM3() {
         reset();
     }
-
+    //重置SM3的IV变量及释放缓冲区
     void reset() {
-        std::copy(std::begin(SM3_IV), std::end(SM3_IV), std::begin(state));
-        length = 0;
-        buffer.clear();
+        std::copy(std::begin(SM3_IV), std::end(SM3_IV), std::begin(state));//重置SM3 IV变量为初始值
+        length = 0;//重置缓冲区长度
+        buffer.clear();//清空缓冲区
     }
 
-    void update(const uint8_t* data, size_t len) {
+    //更新SM3缓冲区
+    void update(const uint8_t* data, //输入数据
+                size_t len) //数据长度
+    {
+        //复制数据到缓冲区，并修改缓冲区大小
         length += len;
         buffer.insert(buffer.end(), data, data + len);
-
+        //复制输入数据到缓冲区后，如果缓冲区满足SM3块大小(64字节)，处理块数据
         while (buffer.size() >= 64) {
             process_block(buffer.data());
-            buffer.erase(buffer.begin(), buffer.begin() + 64);
+            buffer.erase(buffer.begin(), buffer.begin() + 64);//释放已处理块内存
         }
     }
 
     void finalize(uint8_t digest[32]) {
+        //消息填充：将输入数据填充至512位的倍数
+        //1. 先补1，
+        //2. 再补0，
+        //3. 最后附加64位消息长度
         // Padding
-        uint64_t bit_length = length * 8;
-        buffer.push_back(0x80);
+        uint64_t bit_length = length * 8; //位长 = 字节数 * 8
+        //1.先补1
+        buffer.push_back(0x80);//填充二进制 10000000
 
-        size_t padding_size = 64 - (buffer.size() % 64);
+        size_t padding_size = 64 - (buffer.size() % 64);//需要填充位
+        //填充位不足8位，直接填充64位
         if (padding_size < 8) {
             padding_size += 64;
         }
 
+        //2.再补0
+        //在缓冲区中已有数据尾部填充0
         buffer.insert(buffer.end(), padding_size - 8, 0x00);
 
+        //3.最后附加64位消息长度
+        //最后8个字节(64位) 填充原始消息长度
         for (int i = 7; i >= 0; --i) {
             buffer.push_back((bit_length >> (i * 8)) & 0xFF);
         }
 
-        // Process final blocks
+        //处理最终块，从缓冲区中循环处理数据块，每次处理64字节，相当于一个块大小
         for (size_t i = 0; i < buffer.size(); i += 64) {
             process_block(buffer.data() + i);
         }
 
-        // Output digest
+        //最终哈希：最后一轮的中间变量组合生成256位结果
         for (int i = 0; i < 8; ++i) {
             digest[i * 4 + 0] = (state[i] >> 24) & 0xFF;
             digest[i * 4 + 1] = (state[i] >> 16) & 0xFF;
@@ -84,11 +98,15 @@ public:
     }
 
 private:
+    //处理SM3数据块(64字节)
     void process_block(const uint8_t* block) {
-        uint32_t W[68];
-        uint32_t W1[64];
+        //消息扩展：将每个512位分组扩展为132个32位字（用于后续压缩）。
+        //消息扩展变量  132 ＝ 68 + 64
+        uint32_t W[68];//W0~W67
+        uint32_t W1[64];//W0~W63
 
-        // Message expansion
+        //消息扩展
+        //一个块循环16次，每次处理4个字节
         for (int i = 0; i < 16; ++i) {
             W[i] = (block[i * 4 + 0] << 24) |
                    (block[i * 4 + 1] << 16) |
@@ -96,15 +114,17 @@ private:
                    (block[i * 4 + 3] << 0);
         }
 
+        //前68个32位字
         for (int i = 16; i < 68; ++i) {
             W[i] = P1(W[i-16] ^ W[i-9] ^ ROTL(W[i-3], 15)) ^ ROTL(W[i-13], 7) ^ W[i-6];
         }
-
+        //后64个32位字
         for (int i = 0; i < 64; ++i) {
             W1[i] = W[i] ^ W[i+4];
         }
 
-        // Compression
+        //迭代压缩：通过64轮非线性运算（包括与、或、异或、模加等）更新8个中间变量（A-H）
+        //迭代压缩
         uint32_t A = state[0];
         uint32_t B = state[1];
         uint32_t C = state[2];
@@ -140,7 +160,7 @@ private:
         state[7] ^= H;
     }
 
-    uint32_t state[8];
+    uint32_t state[8];//SM3 IV状态
     uint64_t length;
     std::vector<uint8_t> buffer;
 };
